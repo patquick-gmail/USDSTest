@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>eCFR Agency Registry</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:         #f4f2ee;
+      --surface:    #ffffff;
+      --surface2:   #f9f8f5;
+      --border:     #e2ded6;
+      --border-dk:  #ccc7bc;
+      --accent:     #1a4480;
+      --accent-lt:  #e8edf5;
+      --accent2:    #b52a2a;
+      --green:      #1d6b4e;
+      --green-lt:   #e6f4ee;
+      --text:       #1c1a17;
+      --text-2:     #5a554c;
+      --text-3:     #9c968c;
+      --child-bg:   #f0ede8;
+      --row-hover:  #eceae5;
+      --tag-border: #c5c0b5;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Top bar */
+    .topbar { background: var(--accent); color: #fff; padding: 0 40px; height: 46px; display: flex; align-items: center; gap: 16px; }
+    .topbar-logo { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.12em; color: rgba(255,255,255,0.9); }
+    .topbar-sep  { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+    .topbar-sub  { font-size: 12px; color: rgba(255,255,255,0.55); letter-spacing: 0.03em; }
+
+    /* Header */
+    .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 30px 40px 26px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    .header h1 { font-size: 25px; font-weight: 600; line-height: 1.1; }
+    .header h1 em { font-style: normal; color: var(--accent); }
+    .header-meta { font-size: 13px; color: var(--text-3); margin-top: 5px; font-weight: 300; }
+    .header-stats { display: flex; gap: 32px; }
+    .stat { text-align: right; }
+    .stat-n { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; color: var(--accent); line-height: 1; }
+    .stat-l { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+    /* Toolbar */
+    .toolbar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 11px 40px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; padding: 7px 14px; border-radius: 3px; border: 1px solid var(--border-dk); background: var(--surface); color: var(--text-2); cursor: pointer; transition: all 0.12s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { background: #1e4f90; }
+    .search-wrap { position: relative; margin-left: 6px; }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 13px; pointer-events: none; }
+    .search-input { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 12px 7px 30px; border: 1px solid var(--border-dk); border-radius: 3px; background: var(--surface); color: var(--text); outline: none; width: 260px; transition: border-color 0.12s; }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-3); }
+    .toolbar-gap { flex: 1; }
+    .row-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-3); }
+    #fileInput { display: none; }
+
+    /* Table */
+    .table-wrap { padding: 28px 40px 60px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    thead { background: var(--surface2); border-bottom: 2px solid var(--border-dk); }
+    th { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; padding: 11px 16px; text-align: left; white-space: nowrap; user-select: none; }
+    th.sortable { cursor: pointer; transition: color 0.12s; }
+    th.sortable:hover { color: var(--accent); }
+    th.sort-asc  { color: var(--accent); }
+    th.sort-asc::after  { content: ' ↑'; }
+    th.sort-desc { color: var(--accent); }
+    th.sort-desc::after { content: ' ↓'; }
+    th:first-child { width: 48px; }
+
+    tr.pr { border-bottom: 1px solid var(--border); transition: background 0.1s; animation: fadeUp 0.18s ease both; }
+    tr.pr:hover { background: var(--row-hover); }
+    tr.pr:last-of-type { border-bottom: none; }
+    td { padding: 13px 16px; vertical-align: middle; font-size: 13.5px; }
+
+    /* Toggle btn */
+    .tog { width: 24px; height: 24px; border: 1px solid var(--border-dk); border-radius: 3px; background: none; cursor: pointer; color: var(--text-3); font-size: 10px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+    .tog:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+    .tog.open  { border-color: var(--accent); background: var(--accent); color: #fff; transform: rotate(90deg); }
+
+    .ag-name { font-weight: 500; }
+    .ag-name.cl { cursor: pointer; }
+    .ag-name.cl:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+    .pill { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 2px; border: 1px solid var(--tag-border); color: var(--text-2); background: var(--surface2); white-space: nowrap; }
+    .pill.blue  { border-color: #aabfdd; color: var(--accent); background: var(--accent-lt); }
+    .pill.green { border-color: #a0d4be; color: var(--green); background: var(--green-lt); }
+
+    .slug-t { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-3); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+
+    .cfr-wrap { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .cfr-tag  { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 7px; border: 1px solid #c5d4e8; color: var(--accent); background: var(--accent-lt); border-radius: 2px; white-space: nowrap; }
+    .cfr-more { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); }
+
+    .ch-count   { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-2); }
+    .ch-count b { color: var(--accent2); }
+
+    .dash { color: var(--text-3); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+    /* Child rows */
+    tr.cr { display: none; }
+    tr.cr.open { display: table-row; }
+    td.cr-cell { padding: 0; background: var(--child-bg); border-bottom: 2px solid var(--border-dk); }
+    .cr-inner  { padding: 20px 20px 24px 52px; }
+    .cr-label  { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-dk); }
+
+    .ct { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+    .ct thead  { background: #eceae5; }
+    .ct th     { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 13px; border-bottom: 1px solid var(--border-dk); cursor: default; }
+    .ct td     { padding: 10px 13px; font-size: 12.5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .ct tbody tr:last-child td { border-bottom: none; }
+    .ct tbody tr:hover { background: #f5f3ef; }
+
+    .no-data { text-align: center; padding: 80px 20px; color: var(--text-3); font-family: 'DM Mono', monospace; font-size: 13px; }
+    .no-data span { display: block; font-size: 32px; margin-bottom: 14px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+	
+	 #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        #status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+		
+	/* ═══════════════════════════════════════════
+       Block reveal (expands below)
+    ═══════════════════════════════════════════ */
+
+    .expand-wrap-block {
+      display: inline;
+    }
+
+    .expand-toggle-block {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      background: var(--accent-lt);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      border-radius: 3px;
+      padding: 1px 8px;
+      font-size: 13px;
+      font-family: var(--mono);
+      font-weight: 500;
+      user-select: none;
+      transition: all 0.15s;
+      vertical-align: middle;
+    }
+
+    .expand-toggle-block:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .expand-toggle-block .arr {
+      font-size: 9px;
+      transition: transform 0.2s ease;
+    }
+
+    .expand-toggle-block.open .arr {
+      transform: rotate(90deg);
+    }
+
+    .expand-block-content {
+      display: block;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
+      opacity: 0;
+      margin-top: 0;
+      background: var(--accent-lt);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 4px 4px 0;
+      font-size: 14px;
+      font-family: var(--mono);
+      color: var(--ink-2);
+    }
+
+    .expand-block-content.open {
+      max-height: 200px;
+      opacity: 1;
+      margin-top: 10px;
+    }
+
+    .expand-block-content-inner {
+      padding: 12px 16px;
+    }
+
+		
+		
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-logo">eCFR</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-sub">Electronic Code of Federal Regulations</span>
+</div>
+
+<div class="header">
+  <div>
+    <h1>Agency <em>Registry</em></h1>
+    <div class="header-meta">Federal agencies indexed in the Code of Federal Regulations</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-n" id="sA">—</div><div class="stat-l">Agencies</div></div>
+    <div class="stat"><div class="stat-n" id="sC">—</div><div class="stat-l">Sub-Agencies</div></div>
+    <div class="stat"><div class="stat-n" id="sR">—</div><div class="stat-l">CFR Refs</div></div>
+  </div>
+</div>
+
+<div id="status"></div>
+
+<div class="toolbar">
+  <button class="btn" onclick="autoLoad()" style="display:none;visibility:hidden">⬇ Load JSON Data</button>
+  <button id="btnLoadAgencyData" name="btnLoadAgencyData" class="btn primary" onclick="loadFromJSON()">Load Agency Data</button>
+  <button id="btnLoadAgencyDataCounts" name="btnLoadAgencyData" class="btn primary" onclick="loadFromCountsJSON()" style="visibility:hidden">Load Counts</button>
+  <button id="btnLoadAgencyDataCountsByDate" name="btnLoadAgencyData" class="btn primary" onclick="loadFromDatesJSON()" style="visibility:hidden">Load Counts By Date</button>
+  <button id="btnLoadAgencyDataCountsByTitle" name="btnLoadAgencyData" class="btn primary" onclick="loadFromTitlesJSON()" style="visibility:hidden">Load Counts By Title</button>
+  
+  <label for="fileInput" class="btn" style="display:none;visibility:hidden">📂 Upload JSON File</label>
+  <input type="file" id="fileInput" accept=".json" style="display:none;visibility:hidden" onchange="handleUpload(event)"/>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" id="searchInput" type="text" placeholder="Search by name, acronym, or slug…" oninput="doSearch()"/>
+  </div>
+  <div class="toolbar-gap"></div>
+  <button class="btn" onclick="expandAll()">↕ Expand All</button>
+  <button class="btn" onclick="collapseAll()">— Collapse All</button>
+  <span class="row-count" id="rc"></span>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th class="sortable" data-col="name"       onclick="doSort('name')">Agency Name</th>
+        <th class="sortable" data-col="short_name"  onclick="doSort('short_name')">Acronym</th>
+        <th class="sortable" data-col="slug"        onclick="doSort('slug')">Slug</th>
+        <th>CFR References</th>
+        <th class="sortable" data-col="children"    onclick="doSort('children')">Sub-Agencies</th>
+		<th class="sortable" data-col="count"    onclick="doSort('count')">Change Count</th>
+		<th class="sortable" data-col="countByDate"    onclick="doSort('countByDate')">Change Count By Date</th>
+		<th class="sortable" data-col="countByTitle"    onclick="doSort('countByTitle')">Change Count By Title</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="6" class="no-data"><span>🏛</span>Click "Load JSON Data" to populate the table.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+// ── Embedded JSON (exact agencyData structure) ──
+const EMBEDDED = {"agencyData":{"agencies":[{"name":"Administrative Conference of the United States","short_name":"ACUS","display_name":"Administrative Conference of the United States","sortable_name":"Administrative Conference of the United States","slug":"administrative-conference-of-the-united-states","children":[],"cfr_references":[{"title":1,"chapter":"III"}]},{"name":"Department of Agriculture","short_name":"USDA","display_name":"Department of Agriculture","sortable_name":"Agriculture, Department of","slug":"agriculture-department","children":[{"name":"Agricultural Marketing Service","short_name":"AMS","display_name":"Agricultural Marketing Service, Department of Agriculture","sortable_name":"Agricultural Marketing Service","slug":"agricultural-marketing-service","cfr_references":[{"title":7,"chapter":"I"},{"title":7,"chapter":"VIII"},{"title":7,"chapter":"IX"},{"title":7,"chapter":"X"},{"title":7,"chapter":"XI"},{"title":9,"chapter":"II"}]},{"name":"Agricultural Research Service","short_name":"ARS","display_name":"Agricultural Research Service, Department of Agriculture","sortable_name":"Agricultural Research Service","slug":"agricultural-research-service","cfr_references":[{"title":7,"chapter":"V"}]},{"name":"Animal and Plant Health Inspection Service","short_name":"APHIS","display_name":"Animal and Plant Health Inspection Service, Department of Agriculture","sortable_name":"Animal and Plant Health Inspection Service","slug":"animal-and-plant-health-inspection-service","cfr_references":[{"title":7,"chapter":"III"},{"title":9,"chapter":"I"}]},{"name":"Commodity Credit Corporation","short_name":"CCC","display_name":"Commodity Credit Corporation, Department of Agriculture","sortable_name":"Commodity Credit Corporation","slug":"commodity-credit-corporation","cfr_references":[{"title":7,"chapter":"XIV"}]},{"name":"Economic Research Service","short_name":"ERS","display_name":"Economic Research Service, Department of Agriculture","sortable_name":"Economic Research Service","slug":"economic-research-service","cfr_references":[{"title":7,"chapter":"XXXVII"}]},{"name":"Farm Service Agency","short_name":"FSA","display_name":"Farm Service Agency, Department of Agriculture","sortable_name":"Farm Service Agency","slug":"farm-service-agency","cfr_references":[{"title":7,"chapter":"VII"}]},{"name":"Federal Crop Insurance Corporation","short_name":"FCIC","display_name":"Federal Crop Insurance Corporation, Department of Agriculture","sortable_name":"Federal Crop Insurance Corporation","slug":"federal-crop-insurance-corporation","cfr_references":[{"title":7,"chapter":"IV"}]},{"name":"Food and Nutrition Service","short_name":"FNS","display_name":"Food and Nutrition Service, Department of Agriculture","sortable_name":"Food and Nutrition Service","slug":"food-and-nutrition-service","cfr_references":[{"title":7,"chapter":"II"}]},{"name":"Food Safety and Inspection Service","short_name":"FSIS","display_name":"Food Safety and Inspection Service, Department of Agriculture","sortable_name":"Food Safety and Inspection Service","slug":"food-safety-and-inspection-service","cfr_references":[{"title":9,"chapter":"III"}]},{"name":"Foreign Agricultural Service","short_name":"FAS","display_name":"Foreign Agricultural Service, Department of Agriculture","sortable_name":"Foreign Agricultural Service","slug":"foreign-agricultural-service","cfr_references":[{"title":7,"chapter":"XV"}]},{"name":"Forest Service","short_name":"FS","display_name":"Forest Service, Department of Agriculture","sortable_name":"Forest Service","slug":"forest-service","cfr_references":[{"title":36,"chapter":"II"}]},{"name":"National Agricultural Statistics Service","short_name":"NASS","display_name":"National Agricultural Statistics Service, Department of Agriculture","sortable_name":"National Agricultural Statistics Service","slug":"national-agricultural-statistics-service","cfr_references":[{"title":7,"chapter":"XXXVI"}]},{"name":"National Institute of Food and Agriculture","short_name":"NIFA","display_name":"National Institute of Food and Agriculture, Department of Agriculture","sortable_name":"National Institute of Food and Agriculture","slug":"national-institute-of-food-and-agriculture","cfr_references":[{"title":7,"chapter":"XXXIV"}]},{"name":"Natural Resources Conservation Service","short_name":"NRCS","display_name":"Natural Resources Conservation Service, Department of Agriculture","sortable_name":"Natural Resources Conservation Service","slug":"natural-resources-conservation-service","cfr_references":[{"title":7,"chapter":"VI"}]},{"name":"Office of Advocacy and Outreach","short_name":"OAO","display_name":"Office of Advocacy and Outreach, Department of Agriculture","sortable_name":"Advocacy and Outreach, Office of","slug":"advocacy-and-outreach-office","cfr_references":[{"title":7,"chapter":"XXV"}]},{"name":"Office of Chief Financial Officer","short_name":null,"display_name":"Office of Chief Financial Officer, Department of Agriculture","sortable_name":"Chief Financial Officer, Office of","slug":"office-of-the-chief-financial-officer-agriculture-department","cfr_references":[{"title":7,"chapter":"XXX"}]},{"name":"Office of Energy Policy and New Uses","short_name":"OEPNU","display_name":"Office of Energy Policy and New Uses, Department of Agriculture","sortable_name":"Energy Policy and New Uses, Office of","slug":"energy-policy-and-new-uses-office","cfr_references":[{"title":7,"chapter":"XXIX"}]},{"name":"Office of Environmental Quality","short_name":"","display_name":"Office of Environmental Quality, Department of Agriculture","sortable_name":"Environmental Quality, Office of","slug":"office-of-environmental-quality","cfr_references":[{"title":7,"chapter":"XXXI"}]},{"name":"Office of Information Resources Management","short_name":"","display_name":"Office of Information Resources Management, Department of Agriculture","sortable_name":"Information Resources Management, Office of","slug":"office-of-information-resources-management","cfr_references":[{"title":7,"chapter":"XXVII"}]},{"name":"Office of Inspector General","short_name":"OIG USDA","display_name":"Office of Inspector General, Department of Agriculture","sortable_name":"Inspector General, Office of","slug":"inspector-general-office-agriculture-department","cfr_references":[{"title":7,"chapter":"XXVI"}]},{"name":"Office of Operations","short_name":"","display_name":"Office of Operations, Department of Agriculture","sortable_name":"Operations, Office of","slug":"office-of-operations","cfr_references":[{"title":7,"chapter":"XXVIII"}]},{"name":"Office of Procurement and Property Management","short_name":"OPPM","display_name":"Office of Procurement and Property Management, Department of Agriculture","sortable_name":"Procurement and Property Management, Office of","slug":"procurement-and-property-management-office-of","cfr_references":[{"title":7,"chapter":"XXXII"}]},{"name":"Office of Secretary of Agriculture","short_name":"","display_name":"Office of Secretary of Agriculture, Department of Agriculture","sortable_name":"Secretary of Agriculture, Office of","slug":"office-of-secretary-of-agriculture","cfr_references":[{"title":7,"subtitle":"A"}]},{"name":"Office of Transportation","short_name":null,"display_name":"Office of Transportation, Department of Agriculture","sortable_name":"Transportation, Office of","slug":"transportation-office","cfr_references":[{"title":7,"chapter":"XXXIII"}]},{"name":"Rural Business-Cooperative Service","short_name":"RBS","display_name":"Rural Business-Cooperative Service, Department of Agriculture","sortable_name":"Rural Business-Cooperative Service","slug":"rural-business-cooperative-service","cfr_references":[{"title":7,"chapter":"XVIII"},{"title":7,"chapter":"XLII"},{"title":7,"chapter":"L"}]},{"name":"Rural Housing Service","short_name":"RHS","display_name":"Rural Housing Service, Department of Agriculture","sortable_name":"Rural Housing Service","slug":"rural-housing-service","cfr_references":[{"title":7,"chapter":"XVIII"},{"title":7,"chapter":"XXXV"},{"title":7,"chapter":"L"}]},{"name":"Rural Utilities Service","short_name":"RUS","display_name":"Rural Utilities Service, Department of Agriculture","sortable_name":"Rural Utilities Service","slug":"rural-utilities-service","cfr_references":[{"title":7,"chapter":"XVII"},{"title":7,"chapter":"XVIII"},{"title":7,"chapter":"XLII"},{"title":7,"chapter":"L"}]},{"name":"World Agricultural Outlook Board","short_name":null,"display_name":"World Agricultural Outlook Board, Department of Agriculture","sortable_name":"World Agricultural Outlook Board","slug":"world-agricultural-outlook-board","cfr_references":[{"title":7,"chapter":"XXXVIII"}]}],"cfr_references":[{"title":2,"chapter":"IV"},{"title":5,"chapter":"LXXIII"},{"title":7,"chapter":"XVI"},{"title":7,"chapter":"XX"},{"title":7,"chapter":"XXI"},{"title":48,"chapter":"4"}]}]}};
+const agencyURL = 'http://localhost:3000/eCFRData';
+const agencyURLCounts = 'http://localhost:3000/eCFRData-agency-change-counts';
+const agencyURLDates = 'http://localhost:3000/eCFRData-agency-change-counts-by-date';
+const agencyURLTitles = 'http://localhost:3000/eCFRData-agency-change-counts-by-title';
+
+// ── State ──
+let allData  = [], filtered = [], sortCol = null, sortDir = 1, expanded = new Set();
+
+// Show status message
+    function showStatus(message, type, waitTime=3000) {
+		const status = document.getElementById('status');
+        status.textContent = message;
+        status.className = type;
+        status.style.display = 'block';
+        setTimeout(() => {
+			status.style.display = 'none';
+        }, waitTime);
+    }
+
+	// Load from JSON file (fetch from URL)
+	async function loadFromJSON() {
+		const url = agencyURL;
+		if (!url) return;
+
+		try {
+			showStatus('Calling server to get data', 'success');
+			
+			const response = await fetch(url);
+			const data = await response.json();
+			tableData = Array.isArray(data) ? data : [data];
+			const json = JSON.stringify(data, null, 2);	
+			const jsonObj = JSON.parse(json);				
+			ingest(jsonObj);
+			
+			showStatus('Data loaded from JSON successfully!', 'success');
+			
+			const btnLoadAgencyDataCounts = document.getElementById('btnLoadAgencyDataCounts');
+			btnLoadAgencyDataCounts.style.visibility = 'visible';
+			
+			const btnLoadAgencyDataCountsByDate = document.getElementById('btnLoadAgencyDataCountsByDate');
+			btnLoadAgencyDataCountsByDate.style.visibility = 'visible';
+			
+			const btnLoadAgencyDataCountsByTitle = document.getElementById('btnLoadAgencyDataCountsByTitle');
+			btnLoadAgencyDataCountsByTitle.style.visibility = 'visible';
+			
+			
+			
+		} catch (error) {
+			showStatus('Error loading JSON: ' + error.message, 'error');
+		}
+	}
+	
+	// Load from JSON file (fetch from URL)
+	async function loadFromCountsJSON() {
+		const url = agencyURLCounts;
+		if (!url) return;
+
+		try {
+			alert('This takes over a minute so please be patient');
+			
+			showStatus('Calling server to get data', 'success', 60000);
+			
+			const response = await fetch(url);
+			const data = await response.json();
+			tableData = Array.isArray(data) ? data : [data];
+			const json = JSON.stringify(data, null, 2);	
+			const jsonObj = JSON.parse(json);				
+			ingest(jsonObj);
+			
+			showStatus('Data loaded from JSON successfully!', 'success');
+			
+		} catch (error) {
+			showStatus('Error loading JSON: ' + error.message, 'error');
+		}
+	}
+	
+	// Load from JSON file (fetch from URL)
+	async function loadFromDatesJSON() {
+		const url = agencyURLDates;
+		if (!url) return;
+
+		try {
+			alert('This takes over a minute so please be patient');
+			
+			showStatus('Calling server to get data', 'success', 60000);
+			
+			const response = await fetch(url);
+			const data = await response.json();
+			tableData = Array.isArray(data) ? data : [data];
+			const json = JSON.stringify(data, null, 2);	
+			const jsonObj = JSON.parse(json);				
+			ingest(jsonObj);
+			
+			showStatus('Data loaded from JSON successfully!', 'success');
+			
+		} catch (error) {
+			showStatus('Error loading JSON: ' + error.message, 'error');
+		}
+	}
+	
+	// Load from JSON file (fetch from URL)
+	async function loadFromTitlesJSON() {
+		const url = agencyURLTitles;
+		if (!url) return;
+
+		try {
+			alert('This takes over a minute so please be patient');
+			
+			showStatus('Calling server to get data', 'success', 60000);
+			
+			const response = await fetch(url);
+			const data = await response.json();
+			tableData = Array.isArray(data) ? data : [data];
+			const json = JSON.stringify(data, null, 2);	
+			const jsonObj = JSON.parse(json);				
+			ingest(jsonObj);
+			
+			showStatus('Data loaded from JSON successfully!', 'success');
+			
+		} catch (error) {
+			showStatus('Error loading JSON: ' + error.message, 'error');
+		}
+	}
+	
+	async function loadFromJSONPrompt() {
+		const url = prompt('Enter JSON URL or file path:');
+		if (!url) return;
+
+		try {
+			const response = await fetch(url);
+			const data = await response.json();
+			tableData = Array.isArray(data) ? data : [data];
+			const json = JSON.stringify(data, null, 2);	
+			const jsonObj = JSON.parse(json);				
+			ingest(jsonObj);
+			showStatus('Data loaded from JSON successfully!', 'success');
+		} catch (error) {
+			showStatus('Error loading JSON: ' + error.message, 'error');
+		}
+	}
+	
+// ── Ingest: handles agencyData.agencies, agencies, or bare array ──
+function ingest(obj) {
+  allData  = obj?.agencyData?.agencies ?? obj?.agencies ?? (Array.isArray(obj) ? obj : []);
+  filtered = [...allData];
+  expanded.clear();
+  sortCol  = null;
+  document.querySelectorAll('th[data-col]').forEach(t => t.className = 'sortable');
+  document.getElementById('searchInput').value = '';
+  updateStats();
+  render();
+}
+
+function autoLoad()  { ingest(EMBEDDED); }
+
+function handleUpload(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { try { ingest(JSON.parse(ev.target.result)); } catch(err) { alert('Invalid JSON: ' + err.message); } };
+  r.readAsText(f);
+}
+
+// ── Stats ──
+function updateStats() {
+  document.getElementById('sA').textContent = allData.length;
+  document.getElementById('sC').textContent = allData.reduce((s,a)=>s+(a.children?.length||0),0);
+  document.getElementById('sR').textContent = allData.reduce((s,a)=>s+(a.cfr_references?.length||0),0);
+}
+
+// ── Search ──
+function doSearch() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  filtered = q ? allData.filter(a =>
+    a.name.toLowerCase().includes(q) ||
+    (a.short_name||'').toLowerCase().includes(q) ||
+    a.slug.toLowerCase().includes(q)
+  ) : [...allData];
+  render();
+}
+
+// ── Sort ──
+function doSort(col) {
+  sortDir = sortCol === col ? sortDir * -1 : 1;
+  sortCol = col;
+  filtered.sort((a,b) => {
+    const av = col==='children' ? (a.children?.length||0) : (a[col]||'');
+    const bv = col==='children' ? (b.children?.length||0) : (b[col]||'');
+    if (typeof av === 'string') return av.toLowerCase().localeCompare(bv.toLowerCase()) * sortDir;
+    return (av - bv) * sortDir;
+  });
+  document.querySelectorAll('th[data-col]').forEach(t => {
+    t.className = 'sortable';
+    if (t.dataset.col === col) t.classList.add(sortDir===1 ? 'sort-asc' : 'sort-desc');
+  });
+  render();
+}
+
+// ── Helpers ──
+function cfrTag(r) {
+  const label = r.chapter ? `${r.title} CFR ${r.chapter}` : `Title ${r.title}${r.subtitle?' Sub.'+r.subtitle:''}`;
+  return `<span class="cfr-tag">${label}</span>`;
+}
+function cfrCell(refs, max=3) {
+  if (!refs?.length) return `<span class="dash">—</span>`;
+  const vis   = refs.slice(0, max).map(cfrTag).join('');
+  const extra = refs.length > max ? `<span class="cfr-more">+${refs.length-max}</span>` : '';
+  return `<div class="cfr-wrap">${vis}${extra}</div>`;
+}
+function pillFor(sn, type='green') {
+  return sn && sn.trim() ? `<span class="pill ${type}">${sn.trim()}</span>` : `<span class="dash">—</span>`;
+}
+
+// ── Render ──
+function render() {
+	
+  const tbody = document.getElementById('tbody');
+  document.getElementById('rc').textContent = filtered.length ? `${filtered.length} agenc${filtered.length===1?'y':'ies'}` : '';
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="no-data"><span>🔍</span>No agencies match your search.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((a, i) => {
+    const kids   = a.children?.length || 0;
+    const isOpen = expanded.has(i);
+
+	const agencyChangeCounts = displayAgencyChangeCounts(a);
+	const agencyChangeCountsByDate = displayAgencyChangeCountsByDate(a);
+	const agencyChangeCountsByTitle = displayAgencyChangeCountsByTitle(a);
+	
+    const tog = kids
+      ? `<button class="tog${isOpen?' open':''}" onclick="toggle(${i})">▶</button>`
+      : `<span style="display:inline-block;width:24px"></span>`;
+
+    const childSection = kids ? `
+      <tr class="cr${isOpen?' open':''}" id="cr-${i}">
+        <td colspan="6" class="cr-cell">
+          <div class="cr-inner">
+            <div class="cr-label">
+              Sub-agencies of ${(a.short_name&&a.short_name.trim())||a.name} &nbsp;·&nbsp; ${kids} entr${kids===1?'y':'ies'}
+            </div>
+            <table class="ct">
+              <thead><tr><th>Name</th><th>Acronym</th><th>Slug</th><th>CFR References</th></tr></thead>
+              <tbody>
+                ${a.children.map(c=>`
+                  <tr>
+                    <td style="font-weight:500">${c.display_name||c.name}</td>
+                    <td>${pillFor(c.short_name,'blue')}</td>
+                    <td><span class="slug-t" title="${c.slug||''}">${c.slug||'—'}</span></td>
+                    <td>${cfrCell(c.cfr_references,4)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>` : '';
+
+    return `
+      <tr class="pr" style="animation-delay:${i*0.025}s">
+        <td style="padding:13px 16px 13px 14px">${tog}</td>
+        <td><span class="ag-name${kids?' cl':''}" ${kids?`onclick="toggle(${i})"`:''}>${a.name}</span></td>
+        <td>${pillFor(a.short_name,'green')}</td>
+        <td><span class="slug-t" title="${a.slug}">${a.slug}</span></td>
+        <td>${cfrCell(a.cfr_references,3)}</td>
+        <td>${kids
+          ? `<span class="ch-count"><b>${kids}</b> sub-agenc${kids===1?'y':'ies'}</span>`
+          : `<span class="dash">—</span>`}
+        </td>
+		<td><span class="slug-t" title="${a.slug}">${agencyChangeCounts}</span></td>
+		<td><span class="slug-t" title="${a.slug}">${agencyChangeCountsByDate}</span></td>
+		<td><span class="slug-t" title="${a.slug}">${agencyChangeCountsByTitle}</span></td>
+      </tr>${childSection}`;
+  }).join('');
+}
+
+function displayAgencyChangeCounts(obj){
+	var changeCounts = '';
+		
+	showStatus('Agency Change Counts');
+	
+	if(obj){
+		if(obj.agencyChangeCounts){
+			if(obj.agencyChangeCounts.meta){
+				changeCounts = obj.agencyChangeCounts.meta.total_count;
+			}
+		}
+	}
+	
+	return changeCounts;
+}
+
+function displayAgencyChangeCountsByDate(obj){
+	var changeCountsByDate = '';
+	var ret = '';
+	
+	showStatus('Agency Change Counts By Date');
+	
+	if(obj){
+		if(obj.agencyChangeCountsByDate){
+			if(obj.agencyChangeCountsByDate.dates){
+				changeCountsByDate = obj.agencyChangeCountsByDate.dates;
+				
+				ret += '<p><span class="expand-toggle-block" onclick="toggleBlock(this)" role="button" tabindex="0">';
+				ret += '<span>Counts By Date</span> <span class="arr">▶</span>';
+				ret += '</span>';
+				
+				ret += '<div class="expand-block-content">';
+				ret += '<div class="expand-block-content-inner">';
+		
+				for (const [key, value] of Object.entries(changeCountsByDate)) {
+					console.log(`${key}: ${value}`);
+					ret += `<span>${key}: ${value}</span>`;
+					ret += '<br>';
+				}
+				
+				ret += '</div>';
+				ret += '</div></p>';
+		
+			}
+		}
+	}
+	
+	return ret;
+}
+
+function displayAgencyChangeCountsByTitle(obj){
+	var changeCountsByTitle = '';
+	var ret = '';
+	
+	showStatus('Agency Change Counts By Title');
+	
+	if(obj){
+		if(obj.agencyChangeCountsByTitle){
+			if(obj.agencyChangeCountsByTitle.titles){
+				changeCountsByTitle = obj.agencyChangeCountsByTitle.titles;
+				
+				ret += '<p><span class="expand-toggle-block" onclick="toggleBlock(this)" role="button" tabindex="0">';
+				ret += '<span>Counts By Title</span> <span class="arr">▶</span>';
+				ret += '</span>';
+				
+				ret += '<div class="expand-block-content">';
+				ret += '<div class="expand-block-content-inner">';
+				
+				for (const [key, value] of Object.entries(changeCountsByTitle)) {
+					console.log(`${key}: ${value}`);
+					ret += `<span>${key}: ${value}</span>`;
+					ret += '<br>';
+				}
+				
+				ret += '</div>';
+				ret += '</div></p>';
+				
+			}
+		}
+	}
+	
+	return ret;
+}
+
+function toggleBlock(toggleEl) {
+  const content = toggleEl.parentElement.nextElementSibling;
+  const isOpen = toggleEl.classList.toggle('open');
+  content.classList.toggle('open', isOpen);
+}
+
+// ── Toggle ──
+function toggle(i) {
+  expanded.has(i) ? expanded.delete(i) : expanded.add(i);
+  const btn = document.querySelector(`.tog[onclick="toggle(${i})"]`);
+  const cr  = document.getElementById(`cr-${i}`);
+  if (btn) btn.classList.toggle('open', expanded.has(i));
+  if (cr)  cr.classList.toggle('open',  expanded.has(i));
+}
+
+function expandAll()  { filtered.forEach((_,i)=>{ if(filtered[i].children?.length) expanded.add(i); }); render(); }
+function collapseAll(){ expanded.clear(); render(); }
+
+// Auto-load on page open
+//window.addEventListener('DOMContentLoaded', autoLoad);
+</script>
+</body>
+</html>
